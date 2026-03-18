@@ -139,6 +139,43 @@ canvas { display: block; }
 
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
+
+// ===================== SPRITES =====================
+const sprites = {
+  player: new Image(),
+  railgun: new Image(),
+};
+let spritesLoaded = 0;
+const totalSprites = 2;
+
+function onSpriteLoad() {
+  spritesLoaded++;
+  if (spritesLoaded >= totalSprites) {
+    console.log('All sprites loaded!');
+  }
+}
+
+sprites.player.onload = onSpriteLoad;
+sprites.player.onerror = () => console.error('Failed to load player sprite');
+sprites.railgun.onload = onSpriteLoad;
+sprites.railgun.onerror = () => console.error('Failed to load railgun sprite');
+
+// Load sprites
+sprites.player.src = 'assets/player.png';
+sprites.railgun.src = 'assets/railgun.png';
+
+// Sprite config (based on player.png: 96x145, likely 3 frames)
+const PLAYER_SPRITE = {
+  frameWidth: 32,
+  frameHeight: 145,
+  numFrames: 3,
+  scale: 0.6,
+};
+
+// Animation
+let animFrame = 0;
+let animTimer = 0;
+
 let W, H;
 function resize() { W = canvas.width = window.innerWidth; H = canvas.height = window.innerHeight; }
 window.addEventListener('resize', resize);
@@ -398,52 +435,71 @@ function drawPlayer() {
   let aimAngle = Math.atan2(mouseY - screenPY, mouseX - screenPX);
   player.angle = aimAngle;
 
+  // Animation update
+  animTimer++;
+  if (animTimer > 8) {
+    animTimer = 0;
+    animFrame = (animFrame + 1) % PLAYER_SPRITE.numFrames;
+  }
+
   ctx.save();
   ctx.translate(sx, sy);
 
-  // wheelchair body (circle base)
-  ctx.beginPath();
-  ctx.arc(0, 0, PLAYER_RADIUS, 0, Math.PI*2);
-  ctx.fillStyle = '#333';
-  ctx.fill();
-  ctx.strokeStyle = '#666';
-  ctx.lineWidth = 2;
-  ctx.stroke();
-
-  // wheelchair wheels
-  let wheelAngle1 = aimAngle + Math.PI/2;
-  let wheelAngle2 = aimAngle - Math.PI/2;
-  for(let wa of [wheelAngle1, wheelAngle2]){
-    let wx = Math.cos(wa)*PLAYER_RADIUS;
-    let wy = Math.sin(wa)*PLAYER_RADIUS;
+  // Draw sprite if loaded, otherwise fallback to shapes
+  if (spritesLoaded >= totalSprites && sprites.player.complete) {
+    const s = PLAYER_SPRITE;
+    const srcX = animFrame * s.frameWidth;
+    const dstW = s.frameWidth * s.scale;
+    const dstH = s.frameHeight * s.scale;
+    
+    // Flip sprite based on aim direction
+    ctx.save();
+    ctx.rotate(aimAngle);
+    ctx.drawImage(
+      sprites.player,
+      srcX, 0, s.frameWidth, s.frameHeight,
+      -dstW/2, -dstH/2, dstW, dstH
+    );
+    ctx.restore();
+  } else {
+    // Fallback: wheelchair body
     ctx.beginPath();
-    ctx.arc(wx, wy, 5, 0, Math.PI*2);
-    ctx.fillStyle = '#555';
+    ctx.arc(0, 0, PLAYER_RADIUS, 0, Math.PI*2);
+    ctx.fillStyle = '#333';
     ctx.fill();
-    ctx.strokeStyle = '#888';
-    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 2;
     ctx.stroke();
+
+    // wheelchair wheels
+    let wheelAngle1 = aimAngle + Math.PI/2;
+    let wheelAngle2 = aimAngle - Math.PI/2;
+    for(let wa of [wheelAngle1, wheelAngle2]){
+      let wx = Math.cos(wa)*PLAYER_RADIUS;
+      let wy = Math.sin(wa)*PLAYER_RADIUS;
+      ctx.beginPath();
+      ctx.arc(wx, wy, 5, 0, Math.PI*2);
+      ctx.fillStyle = '#555';
+      ctx.fill();
+    }
+
+    // player body
+    ctx.beginPath();
+    ctx.arc(0, -2, 10, 0, Math.PI*2);
+    ctx.fillStyle = '#88f';
+    ctx.fill();
+
+    // main gun
+    ctx.save();
+    ctx.rotate(aimAngle);
+    ctx.fillStyle = '#ddd';
+    ctx.fillRect(10, -3, 18, 6);
+    ctx.restore();
   }
 
-  // player body on wheelchair
-  ctx.beginPath();
-  ctx.arc(0, -2, 10, 0, Math.PI*2);
-  ctx.fillStyle = '#88f';
-  ctx.fill();
-
-  // main gun (manual)
-  ctx.save();
-  ctx.rotate(aimAngle);
-  ctx.fillStyle = '#ddd';
-  ctx.fillRect(10, -3, 18, 6);
-  ctx.fillStyle = '#fff';
-  ctx.fillRect(25, -2, 4, 4);
-  ctx.restore();
-
-  // auto turrets
+  // Auto turrets (always drawn)
   for(let i=0;i<player.autoTurrets;i++){
     let tAngle = aimAngle + Math.PI + (i - (player.autoTurrets-1)/2) * 0.5;
-    // find nearest enemy for turret aim
     let nearest = null, nd = Infinity;
     for(let e of enemies){
       let d = Math.hypot(e.x-player.x, e.y-player.y);
@@ -468,9 +524,9 @@ function drawPlayer() {
   if(player.hp < player.maxHp) {
     let bw = 40;
     ctx.fillStyle = '#400';
-    ctx.fillRect(sx-bw/2, sy-PLAYER_RADIUS-10, bw, 4);
+    ctx.fillRect(sx-bw/2, sy-25, bw, 4);
     ctx.fillStyle = '#f00';
-    ctx.fillRect(sx-bw/2, sy-PLAYER_RADIUS-10, bw*(player.hp/player.maxHp), 4);
+    ctx.fillRect(sx-bw/2, sy-25, bw*(player.hp/player.maxHp), 4);
   }
 
   // iframes flash
@@ -523,18 +579,29 @@ function drawBullets() {
   for(let b of bullets){
     let sx = b.x - camX + W/2;
     let sy = b.y - camY + H/2;
-    ctx.beginPath();
-    ctx.arc(sx, sy, b.radius, 0, Math.PI*2);
-    ctx.fillStyle = b.color;
-    ctx.fill();
-    // glow
-    ctx.save();
-    ctx.globalAlpha = 0.3;
-    ctx.beginPath();
-    ctx.arc(sx, sy, b.radius*2.5, 0, Math.PI*2);
-    ctx.fillStyle = b.color;
-    ctx.fill();
-    ctx.restore();
+    
+    if (b.type === 'manual' && sprites.railgun.complete) {
+      // Draw railgun bullet (oriented in direction of travel)
+      let angle = Math.atan2(b.vy, b.vx);
+      ctx.save();
+      ctx.translate(sx, sy);
+      ctx.rotate(angle);
+      ctx.drawImage(sprites.railgun, -15, -3, 30, 6);
+      ctx.restore();
+    } else {
+      // Default bullet rendering
+      ctx.beginPath();
+      ctx.arc(sx, sy, b.radius, 0, Math.PI*2);
+      ctx.fillStyle = b.color;
+      ctx.fill();
+      ctx.save();
+      ctx.globalAlpha = 0.3;
+      ctx.beginPath();
+      ctx.arc(sx, sy, b.radius*2.5, 0, Math.PI*2);
+      ctx.fillStyle = b.color;
+      ctx.fill();
+      ctx.restore();
+    }
   }
 }
 
