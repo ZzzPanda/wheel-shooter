@@ -8,78 +8,35 @@
 * { margin: 0; padding: 0; box-sizing: border-box; }
 body { background: #0a0a0a; overflow: hidden; cursor: crosshair; font-family: 'Courier New', monospace; }
 canvas { display: block; }
-#ui-overlay {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  pointer-events: none; z-index: 10;
-}
-#hud {
-  position: fixed; top: 10px; left: 10px; color: #0f0; font-size: 14px;
-  z-index: 11; pointer-events: none; text-shadow: 0 0 4px #0f0;
-}
+#ui-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+#hud { position: fixed; top: 10px; left: 10px; color: #0f0; font-size: 14px; z-index: 11; pointer-events: none; text-shadow: 0 0 4px #0f0; }
 #hud div { margin-bottom: 4px; }
-#xp-bar-container {
-  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-  width: 400px; height: 16px; background: #222; border: 1px solid #0f0;
-  z-index: 11; pointer-events: none; border-radius: 8px; overflow: hidden;
-}
+#xp-bar-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); width: 400px; height: 16px; background: #222; border: 1px solid #0f0; z-index: 11; pointer-events: none; border-radius: 8px; overflow: hidden; }
 #xp-bar { height: 100%; width: 0%; background: linear-gradient(90deg, #0a0, #0f0); transition: width 0.2s; }
-#xp-text {
-  position: fixed; bottom: 38px; left: 50%; transform: translateX(-50%);
-  color: #0f0; font-size: 12px; z-index: 11; pointer-events: none;
-  text-shadow: 0 0 4px #0f0;
-}
-#level-up-screen {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.8); z-index: 100; display: none;
-  justify-content: center; align-items: center; flex-direction: column;
-}
+#xp-text { position: fixed; bottom: 38px; left: 50%; transform: translateX(-50%); color: #0f0; font-size: 12px; z-index: 11; pointer-events: none; text-shadow: 0 0 4px #0f0; }
+#level-up-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 100; display: none; justify-content: center; align-items: center; flex-direction: column; }
 #level-up-screen h2 { color: #ff0; font-size: 32px; margin-bottom: 20px; text-shadow: 0 0 10px #ff0; }
 #upgrade-options { display: flex; gap: 16px; }
-.upgrade-card {
-  width: 180px; padding: 20px; background: #1a1a2e; border: 2px solid #0f0;
-  border-radius: 12px; color: #eee; cursor: pointer; pointer-events: all;
-  transition: all 0.2s; text-align: center;
-}
+.upgrade-card { width: 180px; padding: 20px; background: #1a1a2e; border: 2px solid #0f0; border-radius: 12px; color: #eee; cursor: pointer; pointer-events: all; transition: all 0.2s; text-align: center; }
 .upgrade-card:hover { border-color: #ff0; transform: scale(1.05); box-shadow: 0 0 20px rgba(255,255,0,0.3); }
 .upgrade-card .icon { font-size: 36px; margin-bottom: 10px; }
 .upgrade-card .name { font-size: 16px; font-weight: bold; color: #0f0; margin-bottom: 8px; }
 .upgrade-card .desc { font-size: 12px; color: #aaa; }
-#start-screen {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: #0a0a0a; z-index: 200; display: flex;
-  justify-content: center; align-items: center; flex-direction: column;
-}
+#start-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #0a0a0a; z-index: 200; display: flex; justify-content: center; align-items: center; flex-direction: column; }
 #start-screen h1 { color: #0f0; font-size: 48px; text-shadow: 0 0 20px #0f0; margin-bottom: 10px; }
 #start-screen p { color: #888; font-size: 14px; margin-bottom: 30px; }
 #start-screen .controls { color: #666; font-size: 12px; margin-bottom: 20px; line-height: 1.8; }
-#start-btn {
-  padding: 15px 50px; font-size: 20px; background: transparent;
-  color: #0f0; border: 2px solid #0f0; cursor: pointer; font-family: 'Courier New';
-  transition: all 0.2s; border-radius: 4px;
-}
+#start-btn { padding: 15px 50px; font-size: 20px; background: transparent; color: #0f0; border: 2px solid #0f0; cursor: pointer; font-family: 'Courier New'; transition: all 0.2s; border-radius: 4px; }
 #start-btn:hover { background: #0f0; color: #000; }
-#game-over-screen {
-  position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0,0,0,0.9); z-index: 200; display: none;
-  justify-content: center; align-items: center; flex-direction: column;
-}
+#game-over-screen { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 200; display: none; justify-content: center; align-items: center; flex-direction: column; }
 #game-over-screen h1 { color: #f00; font-size: 48px; text-shadow: 0 0 20px #f00; margin-bottom: 10px; }
 #game-over-screen .stats { color: #aaa; font-size: 16px; margin-bottom: 30px; line-height: 2; }
-#restart-btn {
-  padding: 15px 50px; font-size: 20px; background: transparent;
-  color: #f00; border: 2px solid #f00; cursor: pointer; font-family: 'Courier New';
-  transition: all 0.2s; border-radius: 4px;
-}
+#restart-btn { padding: 15px 50px; font-size: 20px; background: transparent; color: #f00; border: 2px solid #f00; cursor: pointer; font-family: 'Courier New'; transition: all 0.2s; border-radius: 4px; }
 #restart-btn:hover { background: #f00; color: #000; }
-#wave-announce {
-  position: fixed; top: 30%; left: 50%; transform: translate(-50%,-50%);
-  color: #ff0; font-size: 36px; z-index: 15; pointer-events: none;
-  text-shadow: 0 0 20px #ff0; opacity: 0; transition: opacity 0.5s;
-}
+#wave-announce { position: fixed; top: 30%; left: 50%; transform: translate(-50%,-50%); color: #ff0; font-size: 36px; z-index: 15; pointer-events: none; text-shadow: 0 0 20px #ff0; opacity: 0; transition: opacity 0.5s; }
 </style>
 </head>
 <body>
-
 <canvas id="game"></canvas>
 
 <div id="hud">
@@ -122,4 +79,16 @@ canvas { display: block; }
   <button id="restart-btn">再来一次</button>
 </div>
 
-<script type="module" src="js/game.js"></script>
+<script type="module">
+import { init } from './js/game.js';
+import { loadSprites } from './js/sprites.js';
+
+// Load sprites, then init game
+loadSprites(() => {
+  console.log('Sprites loaded, ready to play!');
+});
+
+init();
+</script>
+</body>
+</html>
