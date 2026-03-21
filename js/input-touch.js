@@ -19,8 +19,8 @@ export const touch = {
   brakePressed: false,
   
   // Config
-  joystickRadius: 60,
-  joystickDeadzone: 0.2,
+  joystickRadius: 80, // bigger joystick
+  joystickDeadzone: 0.15,
   shootAreaX: 0.5, // right 50% of screen
 };
 
@@ -29,6 +29,16 @@ const DASH_COOLDOWN = 180; // frames (3 seconds at 60fps)
 const DASH_DURATION = 30; // frames (0.5 seconds)
 const DASH_SPEED_MULT = 2.5;
 const BRAKE_FRICTION = 0.1;
+
+// Button configs
+const BUTTON_RADIUS = 50; // bigger buttons
+const DASH_X_OFFSET = 80; // from right edge
+const DASH_Y = 120; // from top
+const BRAKE_Y = 220; // below dash
+
+// Left side button (brake)
+const LEFT_BUTTON_X = 80; // from left edge
+const LEFT_BRAKE_Y = 220;
 
 export let dashCooldownTimer = 0;
 export let dashActiveTimer = 0;
@@ -43,27 +53,53 @@ export function initTouchControls() {
       const x = t.clientX / window.innerWidth;
       const y = t.clientY / window.innerHeight;
       
-      // Joystick area (left 40% of screen, bottom 40%)
-      if (x < 0.4 && y > 0.6) {
-        touch.joystickActive = true;
-        touch.joystickId = t.identifier;
-        touch.joystickStart = { x: t.clientX, y: t.clientY };
-        touch.joystickCurrent = { x: t.clientX, y: t.clientY };
-        touch.joystickVector = { x: 0, y: 0 };
+      const W = window.innerWidth;
+      const H = window.innerHeight;
+      
+      // Left side: joystick + brake button
+      if (x < 0.5) {
+        // Brake button (left side, middle height)
+        const brakeBtnX = LEFT_BUTTON_X;
+        const brakeBtnY = LEFT_BRAKE_Y;
+        const tx = t.clientX;
+        const ty = t.clientY;
+        const brakeDist = Math.sqrt((tx - brakeBtnX) ** 2 + (ty - brakeBtnY) ** 2);
+        
+        if (brakeDist < BUTTON_RADIUS) {
+          touch.brakePressed = true;
+        } else {
+          // Joystick (left half, anywhere)
+          touch.joystickActive = true;
+          touch.joystickId = t.identifier;
+          touch.joystickStart = { x: t.clientX, y: t.clientY };
+          touch.joystickCurrent = { x: t.clientX, y: t.clientY };
+          touch.joystickVector = { x: 0, y: 0 };
+        }
       }
-      // Dash button (right side, top)
-      else if (x > 0.85 && y > 0.7 && y < 0.85) {
-        touch.dashPressed = true;
-      }
-      // Brake button (right side, bottom)
-      else if (x > 0.85 && y > 0.85) {
-        touch.brakePressed = true;
-      }
-      // Shoot area (right 60% of screen)
-      else if (x >= 0.4) {
-        touch.shootActive = true;
-        touch.shootId = t.identifier;
-        touch.shootPos = { x: t.clientX, y: t.clientY };
+      // Right half: dash button + fixed shoot joystick
+      else {
+        const rightX = W;
+        const dashBtnX = rightX - DASH_X_OFFSET;
+        const dashBtnY = DASH_Y;
+        
+        const tx = t.clientX;
+        const ty = t.clientY;
+        
+        // Check dash button (top right)
+        const dashDist = Math.sqrt((tx - dashBtnX) ** 2 + (ty - dashBtnY) ** 2);
+        if (dashDist < BUTTON_RADIUS) {
+          touch.dashPressed = true;
+        }
+        // Fixed shoot joystick (right side, lower area)
+        else {
+          touch.shootActive = true;
+          touch.shootId = t.identifier;
+          // Fixed center position for shoot joystick
+          touch.shootPos = { 
+            x: W * 0.75, 
+            y: H - 180 
+          };
+        }
       }
     }
   }, { passive: false });
@@ -91,7 +127,20 @@ export function initTouchControls() {
       }
       
       if (t.identifier === touch.shootId) {
-        touch.shootPos = { x: t.clientX, y: t.clientY };
+        // For fixed joystick, calculate relative to fixed center
+        const W = window.innerWidth;
+        const H = window.innerHeight;
+        const fixedX = W * 0.75;
+        const fixedY = H - 180;
+        
+        // Update aim direction based on touch movement relative to fixed center
+        const dx = t.clientX - fixedX;
+        const dy = t.clientY - fixedY;
+        const dist = Math.sqrt(dx * dx + dy * dy);
+        
+        if (dist > 10) {
+          touch.shootPos = { x: t.clientX, y: t.clientY };
+        }
       }
     }
   }, { passive: false });
@@ -172,7 +221,13 @@ export function drawTouchUI(ctx, W, H) {
   // Only draw on touch devices
   if (!('ontouchstart' in window)) return;
   
-  // Joystick
+  const rightX = W - DASH_X_OFFSET;
+  const shootJoystickX = W * 0.75;
+  const shootJoystickY = H - 180;
+  
+  // === LEFT SIDE ===
+  
+  // Joystick (left side)
   if (touch.joystickActive) {
     const jx = touch.joystickStart.x;
     const jy = touch.joystickStart.y;
@@ -180,9 +235,9 @@ export function drawTouchUI(ctx, W, H) {
     // Base
     ctx.beginPath();
     ctx.arc(jx, jy, touch.joystickRadius, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
     ctx.lineWidth = 2;
     ctx.stroke();
     
@@ -190,54 +245,72 @@ export function drawTouchUI(ctx, W, H) {
     const stickX = jx + touch.joystickVector.x * touch.joystickRadius * 0.8;
     const stickY = jy + touch.joystickVector.y * touch.joystickRadius * 0.8;
     ctx.beginPath();
-    ctx.arc(stickX, stickY, 25, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+    ctx.arc(stickX, stickY, 30, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
     ctx.fill();
   }
   
-  // Dash button
-  const dashX = W - 80;
-  const dashY = H - 180;
+  // Brake button (left side, middle)
   ctx.beginPath();
-  ctx.arc(dashX, dashY, 35, 0, Math.PI * 2);
-  if (dashCooldownTimer > 0) {
-    ctx.fillStyle = 'rgba(100, 100, 100, 0.5)';
+  ctx.arc(LEFT_BUTTON_X, LEFT_BRAKE_Y, BUTTON_RADIUS, 0, Math.PI * 2);
+  if (touch.brakePressed) {
+    ctx.fillStyle = 'rgba(255, 100, 100, 0.7)';
   } else {
-    ctx.fillStyle = 'rgba(255, 200, 0, 0.4)';
+    ctx.fillStyle = 'rgba(255, 100, 100, 0.3)';
   }
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.lineWidth = 2;
   ctx.stroke();
   ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-  ctx.font = 'bold 16px Arial';
+  ctx.font = 'bold 20px Arial';
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
-  ctx.fillText('冲', dashX, dashY);
+  ctx.fillText('停', LEFT_BUTTON_X, LEFT_BRAKE_Y);
   
-  // Brake button
-  const brakeX = W - 80;
-  const brakeY = H - 80;
+  // === RIGHT SIDE ===
+  
+  // Dash button (right top)
   ctx.beginPath();
-  ctx.arc(brakeX, brakeY, 35, 0, Math.PI * 2);
-  if (touch.brakePressed) {
-    ctx.fillStyle = 'rgba(255, 100, 100, 0.6)';
+  ctx.arc(rightX, DASH_Y, BUTTON_RADIUS, 0, Math.PI * 2);
+  if (dashCooldownTimer > 0) {
+    ctx.fillStyle = 'rgba(100, 100, 100, 0.4)';
+  } else if (touch.dashPressed) {
+    ctx.fillStyle = 'rgba(255, 200, 0, 0.7)';
   } else {
-    ctx.fillStyle = 'rgba(255, 100, 100, 0.4)';
+    ctx.fillStyle = 'rgba(255, 200, 0, 0.3)';
   }
   ctx.fill();
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.lineWidth = 2;
   ctx.stroke();
   ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
-  ctx.fillText('停', brakeX, brakeY);
+  ctx.fillText('冲', rightX, DASH_Y);
   
-  // Aim indicator
+  // Fixed shoot joystick (right side, lower area)
+  // Draw fixed base area
+  ctx.beginPath();
+  ctx.arc(shootJoystickX, shootJoystickY, 60, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(255, 50, 50, 0.15)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(255, 50, 50, 0.4)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  
+  // Draw stick when touching
   if (touch.shootActive) {
+    const stickX = touch.shootPos.x;
+    const stickY = touch.shootPos.y;
     ctx.beginPath();
-    ctx.arc(touch.shootPos.x, touch.shootPos.y, 15, 0, Math.PI * 2);
-    ctx.strokeStyle = 'rgba(255, 0, 0, 0.6)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    ctx.arc(stickX, stickY, 25, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(255, 50, 50, 0.5)';
+    ctx.fill();
   }
+  
+  // Labels
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+  ctx.font = '12px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('左:摇杆/刹车', LEFT_BUTTON_X, LEFT_BRAKE_Y + 70);
+  ctx.fillText('右:冲刺/射击', rightX, shootJoystickY + 80);
 }

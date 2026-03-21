@@ -361,21 +361,26 @@ export function updateGame(dt) {
 
   if (player.manualFireCD > 0) player.manualFireCD -= dt;
   
-  // Mouse or touch shooting
-  const isShooting = mouseDown || touch.isTouchShooting();
+  // Mouse or touch shooting (disabled when dashing or braking)
+  const isBraking = touch.isBraking();
+  const isDashing = touch.isDashing();
+  const canShoot = !isBraking && !isDashing;
+  const isShooting = canShoot && (mouseDown || touch.isTouchShooting());
   if (isShooting && player.manualFireCD <= 0) {
     fireManualBullet(aimAngle);
     player.manualFireCD = player.manualRate;
   }
 
-  // Auto fire
-  for (let i = 0; i < player.autoTurrets; i++) {
-    if (!player.autoFireCDs[i])
-      player.autoFireCDs[i] = Math.floor((i * player.autoRate) / player.autoTurrets);
-    if (player.autoFireCDs[i] > 0) player.autoFireCDs[i] -= dt;
-    if (player.autoFireCDs[i] <= 0 && enemies.length > 0) {
-      fireAutoBullet(i);
-      player.autoFireCDs[i] = player.autoRate;
+  // Auto fire (disabled when braking)
+  if (!isBraking) {
+    for (let i = 0; i < player.autoTurrets; i++) {
+      if (!player.autoFireCDs[i])
+        player.autoFireCDs[i] = Math.floor((i * player.autoRate) / player.autoTurrets);
+      if (player.autoFireCDs[i] > 0) player.autoFireCDs[i] -= dt;
+      if (player.autoFireCDs[i] <= 0 && enemies.length > 0) {
+        fireAutoBullet(i);
+        player.autoFireCDs[i] = player.autoRate;
+      }
     }
   }
 
